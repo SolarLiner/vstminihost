@@ -15,9 +15,12 @@ struct VstHostImpl {
 
 impl VstHostImpl {
     fn load(&mut self, mut loader: PluginLoader<Self>) -> Result<(), PluginLoadError> {
+        println!("Loading plugin instance");
         let mut instance = loader.instance()?;
+        println!("Initializing plugin");
         instance.init();
         self.plugin.replace(instance);
+        println!("Done");
         Ok(())
     }
 
@@ -40,7 +43,8 @@ impl VstHost {
         let path = path.as_ref();
 
         let loader = PluginLoader::load(path, self.0.clone())?;
-        self.0.lock().unwrap().load(loader)
+        self.0.lock().unwrap().load(loader)?;
+        Ok(())
     }
 
     pub fn get_ref_map<T, F: FnOnce(&PluginInstance) -> T>(&self, func: F) -> Option<T> {
