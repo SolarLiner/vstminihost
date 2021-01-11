@@ -1,0 +1,8 @@
+.open_file_dialogue_button {
+  width: 100px;
+  height: 30px;
+  background-color: #323232;
+  border-radius: 3px;
+  color: white;
+  text-justify: center;
+}
