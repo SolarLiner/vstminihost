@@ -6,6 +6,7 @@ use std::{
     },
 };
 
+use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 use tuix::*;
 
 use nfd::Response;
@@ -13,6 +14,7 @@ use vst::{
     host::{Host, PluginInstance, PluginLoadError, PluginLoader},
     plugin::Plugin,
 };
+use winit::window::Window;
 
 mod host;
 
@@ -68,9 +70,15 @@ impl EventHandler for HostWidget {
                             }
                             _ => return false,
                         };
-                        let instance = load(self.host.clone(), path).map(|i| i.get_info());
+                        let mut instance = load(self.host.clone(), path).unwrap();
+                        if let Some(editor) = instance.get_editor() {
+                            let parent = todo!();
+                            let success = editor.open(parent);
+                            println!("Editor window opened successfully");
+                        }
 
-                        self.label.set_text(state, &format!("{:?}", instance));
+                        self.label
+                            .set_text(state, &format!("{:?}", instance.get_info()));
 
                         return true;
                     }
@@ -92,11 +100,39 @@ fn load<H: Host, P: AsRef<Path>>(
 
 fn main() {
     let app = Application::new(move |win_desc, state, window| {
-        let host_widget =
-            HostWidget::default().build(state, window, |builder| builder.set_flex_grow(1.0));
+        //let host_widget = HostWidget::default().build(state, window, |builder| builder.set_flex_grow(1.0));
 
         win_desc
     });
 
+    // Here
+    let args = std::env::args().collect::<Vec<_>>();
+    let host = Arc::new(Mutex::new(VstHost));
+    let mut instance = load(host, &args[1]).unwrap();
+    if let Some(mut editor) = instance.get_editor() {
+        let handle = app.window.handle.window().raw_window_handle();
+        match handle {
+            RawWindowHandle::Xcb(w) => {
+                println!("Xcb");
+                editor.open(w.window as *mut _);
+            }
+            RawWindowHandle::Xlib(w) => {
+                println!("Xlib");
+                editor.open(w.window as u32 as *mut _);
+            }
+            _ => {
+                println!("Unsupported platform");
+                return;
+            }
+        }
+    } else {
+        println!("No GUI");
+    }
+
+    let handle = app.window.handle.window().raw_window_handle();
+    match handle {
+        RawWindowHandle::Wayland(w) => println!("Window handle: {:?}", w),
+        _ => println!("Other platform"),
+    }
     app.run();
 }
